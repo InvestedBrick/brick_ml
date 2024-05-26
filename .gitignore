@@ -1,2 +1,2 @@
-__pycache__/
-activations/__pycache__/
+*.pyc
+*/__pycache__
