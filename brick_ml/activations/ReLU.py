@@ -1,7 +1,8 @@
+import numpy as np
 class ReLU:
     def __init__(self) -> None:
         pass
     def function(self,x):
-        return max(0,x)
+        return np.maximum(0,x)
     def function_derivative(self,x):
-        return self.function(x) / x
+        return np.where(x > 0, 1, 0)

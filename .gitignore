@@ -1,2 +1,5 @@
 *.pyc
 */__pycache__
+*.npy
+*.txt
+load_model_test.py
