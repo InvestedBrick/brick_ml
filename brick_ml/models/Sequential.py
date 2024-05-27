@@ -11,7 +11,7 @@ class Sequential:
         for epoch in range(n_epochs):
             epoch_loss = 0.0
             for x,y in zip(inputs,expected_output):
-                output = self.predict(x.reshape(1,-1))
+                output = self.predict(x.reshape(1,-1),training=True)
 
                 loss = self.loss.loss(y,output)
                 epoch_loss += loss
@@ -24,11 +24,12 @@ class Sequential:
                 print(f"Finished Epoch {epoch}, Loss {epoch_loss}")
                 self.loss_history.append(epoch_loss)
 
-    def predict(self,inputs : np.ndarray):
+    def predict(self,inputs : np.ndarray, training: bool = False):
         data = inputs
         for layer in self.layers:
-            data = layer.forward(data) 
+            data = layer.forward(data,training) 
         return data   
+    
     def save(self, model_name):
         weights_file = f"{model_name}_weights.txt"
         biases_file = f"{model_name}_biases.txt"

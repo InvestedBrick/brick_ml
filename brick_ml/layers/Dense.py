@@ -5,7 +5,7 @@ class Dense:
         self.activation = activation
         self.weights = np.random.randn(n_inputs,n_neurons)
         self.biases = np.random.randn(1,n_neurons)
-    def forward(self,inputs : np.ndarray):
+    def forward(self,inputs : np.ndarray,training : bool):
         self.inputs = inputs
         self.weighted_sum = np.dot(inputs,self.weights) + self.biases
         if self.activation is not None:
