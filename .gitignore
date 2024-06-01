@@ -2,4 +2,5 @@
 */__pycache__
 *.npy
 *.txt
+!requirements.txt
 load_model_test.py
