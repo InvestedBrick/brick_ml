@@ -1,5 +1,8 @@
 import numpy as np
-
+import brick_ml.losses
+import brick_ml.layers
+import brick_ml.activations
+import importlib
 def test_train_split(X: np.ndarray | list, y: np.ndarray | list, split_size: float):
     """
     Split the data into training and test sets.
@@ -52,11 +55,45 @@ def vectorize(size, idx):
     Returns:
     - arr (np.ndarray): The binary vector representation of the index.
     """
-    # Create a zero array of shape (1, size)
-    arr = np.zeros((1, size), dtype=int)
+    # Create a zero array of shape (size,)
+    arr = np.zeros(size, dtype=int)
     
     # Set the idx-th element of arr to 1.0
-    arr[0][idx] = 1.0
-    
-    # Return the array
+    arr[idx] = 1.0
     return arr
+
+def get_loss(loss_name: str):
+    """
+    Returns the loss function based on the loss name.
+
+    Args:
+    - loss_name (str): The name of the loss function.
+
+    Returns:
+    - loss (brick_ml.losses.Loss): The loss function.
+    """
+    return getattr(importlib.import_module(f"brick_ml.losses.{loss_name}"), loss_name)
+
+def get_layer(layer_name: str):
+    """
+    Returns the layer class based on the layer name.
+
+    Args:
+    - layer_name (str): The name of the layer.
+
+    Returns:
+    - layer (brick_ml.layers.Layer): The layer class.
+    """
+    return getattr(importlib.import_module(f"brick_ml.layers.{layer_name}"), layer_name)
+
+def get_activation(activation_name: str):
+    """
+    Returns the activation function based on the activation name.
+
+    Args:
+    - activation_name (str): The name of the activation function.
+
+    Returns:
+    - activation (brick_ml.activations.Activation): The activation function.
+    """
+    return getattr(importlib.import_module(f"brick_ml.activations.{activation_name}"), activation_name)
