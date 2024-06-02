@@ -32,7 +32,7 @@ def parity():
     ])
     #0, 1, 1, 0, 1, 0, 0, 1
     y = np.array([[0],[1],[1],[0],[1],[0],[0],[1]])
-    model.train(n_epochs=10000,timestep=100,inputs=X,expected_output=y)
+    model.train(n_epochs=10000,timestep=100,inputs=X,expected_output=y,batch_size=None)
 
     print("Testing Model:")
     off = 0
@@ -58,11 +58,11 @@ def iris():
     y = [util.vectorize(size=3,idx=i) for i in data_set["target"]]
     names = data_set["target_names"]
     X_train,X_test,y_train,y_test = util.test_train_split(X,y,split_size=0.7)
-    model = Sequential.Sequential(0.07,mse.MSE())
+    model = Sequential.Sequential(0.07,mse.mse())
     model.add_layer(Dense.Dense(n_inputs=4,n_neurons=5,activation=Sigmoid.Sigmoid()))
     model.add_layer(Dense.Dense(n_inputs=model.last_layer_size,n_neurons=3,activation=Tanh.Tanh()))
     model.add_layer(Dense.Dense(n_inputs=model.last_layer_size,n_neurons=3,activation=Sigmoid.Sigmoid()))
-    model.train(n_epochs=5000,timestep=100,inputs=X_train,expected_output=y_train)
+    model.train(n_epochs=5000,timestep=100,inputs=X_train,expected_output=y_train,batch_size=6,shuffle=True)
     accuracy = model.evaluate(X_test,y_test)
     print(f"Accuracy: {accuracy*100:.2f} %")
     savemodel = input("Save Model(y/n)?")
