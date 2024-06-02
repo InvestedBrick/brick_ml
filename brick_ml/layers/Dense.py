@@ -1,11 +1,16 @@
 import numpy as np
 class Dense:
     def __init__(self,n_inputs : int,n_neurons : int ,activation = None) -> None:
+        self.n_inputs = n_inputs
         self.n_neurons = n_neurons
         self.activation = activation
-        self.weights = np.random.randn(n_inputs,n_neurons)
-        self.biases = np.random.randn(1,n_neurons)
-    def forward(self, inputs: np.ndarray, training: bool) -> np.ndarray:
+        self.init_weights_and_biases()
+        
+        
+    def init_weights_and_biases(self):
+        self.weights = np.random.randn(self.n_inputs,self.n_neurons)
+        self.biases = np.random.randn(1,self.n_neurons)
+    def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
         """
         Forward pass through the layer.
 
@@ -51,9 +56,7 @@ class Dense:
         
         # Update the weights and biases using gradient descent
         self.weights -= learning_rate * d_weights
-        self.biases -= learning_rate * output_gradient
-        
+        self.biases -= learning_rate * np.sum(output_gradient, axis=0, keepdims=True)
         # Return the gradient of the loss with respect to the input of the layer
-        return np.dot(output_gradient, self.weights.T)
         return np.dot(output_gradient, self.weights.T)
         
