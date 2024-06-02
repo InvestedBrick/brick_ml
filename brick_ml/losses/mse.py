@@ -1,5 +1,5 @@
 import numpy as np
-class MSE:
+class mse:
     def __init__(self) -> None:
         pass
     def loss(self,y_true,y_pred):
