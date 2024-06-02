@@ -1,4 +1,6 @@
 import numpy as np
+import json
+import brick_ml.utility as util
 class Sequential:
     def __init__(self,learning_rate : float, loss) -> None:
         self.layers = []
@@ -14,7 +16,8 @@ class Sequential:
         """
         self.layers.append(layer)  # Append the layer to the list of layers
         self.last_layer_size = self.layers[-1].n_neurons  # Update the last layer size
-    def train(self, n_epochs: int, timestep: int, inputs: np.ndarray, expected_output: np.ndarray):
+
+    def train(self, n_epochs: int, timestep: int, inputs: np.ndarray, expected_output: np.ndarray, batch_size: int | None, shuffle: bool = True):
         """
         Trains the model for a given number of epochs.
 
@@ -23,29 +26,42 @@ class Sequential:
         - timestep (int): Number of epochs to wait before printing the loss.
         - inputs (np.ndarray): Input data.
         - expected_output (np.ndarray): True labels for the input data.
+        - batch_size (int): Size of the mini-batch.
+        - shuffle (bool, optional): Whether to shuffle the data. Defaults to True.
         """
+        # Set default batch size if None or negative
+        if batch_size is None or batch_size < 0:
+            batch_size = len(inputs)
+        
         # Train the model for the specified number of epochs
         for epoch in range(n_epochs):
+            # Shuffle the data if specified
+            if shuffle:
+                indices = np.arange(len(inputs))
+                np.random.shuffle(indices)
+                inputs = np.array([inputs[i] for i in indices])
+                expected_output = np.array([expected_output[i] for i in indices])
+            
             epoch_loss = 0.0  # Accumulate the loss for the epoch
-
-            # Iterate over each input and expected output pair
-            for x,y in zip(inputs,expected_output):
-                # Predict the output for the input
-                output = self.predict(x.reshape(1,-1),training=True)
+            # Iterate over each mini-batch
+            for i in range(0, len(inputs), batch_size):
+                # Get the mini-batch
+                X_batch = inputs[i:i+batch_size]
+                y_batch = expected_output[i:i+batch_size]
+                # Predict the output for the mini-batch
+                output = self.predict(X_batch,training=True)
 
                 # Calculate the loss
-                loss = self.loss.loss(y,output)
+                loss = self.loss.loss(y_batch,output)
                 epoch_loss += loss
-
                 # Calculate the gradient of the loss with respect to the weights
-                gradient = self.loss.loss_derivative(y,output)
-
+                gradient = self.loss.loss_derivative(y_batch,output)
                 # Backpropagate the gradient through the layers
                 for layer in reversed(self.layers):
                     gradient = layer.backward(gradient, self.learning_rate)
-
+            
             # Calculate the average loss for the epoch
-            epoch_loss /= len(inputs)
+            epoch_loss /= len(inputs) // batch_size
 
             # Print the loss if the epoch is a multiple of timestep
             if epoch % timestep == 0:
@@ -90,7 +106,7 @@ class Sequential:
         # Iterates over each test data instance.
         for x,y in zip(X_test,y_test):
             # Predicts the label of the input data.
-            predicted_label = np.argmax(self.predict(x.reshape(1,-1)))
+            predicted_label = np.argmax(self.predict(x))
             # If the predicted label equals the true label, increments the counter.
             if predicted_label == np.argmax(y):
                 counter += 1
@@ -121,6 +137,22 @@ class Sequential:
         # Save the concatenated weights and biases to the respective text files.
         np.savetxt(weights_file, np.concatenate(all_weights))
         np.savetxt(biases_file, np.concatenate(all_biases))
+        #store layer data, batch size, and learning rate 
+        data = {}
+        data["learning_rate"] = self.learning_rate
+        data["loss"] = self.loss.__class__.__name__
+        layers = {}
+        for i,layer in enumerate(self.layers):
+            layer_data = {}
+            layer_data["n_inputs"] = layer.n_inputs
+            layer_data["n_neurons"] = layer.n_neurons
+            layer_data["activation"] = layer.activation.__class__.__name__
+            layer_data["type"] = layer.__class__.__name__
+            layers[f"layer_{i}"] = layer_data
+        data["layers"] = layers    
+        with open(f"{model_name}_metadata.json", "w",encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
     
     def load(self, model_name):
         """
@@ -132,15 +164,25 @@ class Sequential:
         # Define the file names for the weights and biases.
         weights_file = f"{model_name}_weights.txt"
         biases_file = f"{model_name}_biases.txt"
-        
+        metadata_file = f"{model_name}_metadata.json"
         # Load the weights and biases from the respective text files.
         all_weights = np.loadtxt(weights_file)
         all_biases = np.loadtxt(biases_file)
-        
+        with open(metadata_file, "r",encoding="utf-8") as f:
+            data = json.load(f)
+        self.learning_rate = data["learning_rate"]
+        self.loss = util.get_loss(data["loss"])
         # Initialize offsets for the weights and biases.
         weight_offset = 0
         bias_offset = 0
-        
+        layers = data["layers"] 
+        for  layer_data in layers.values():
+            layer = util.get_layer(layer_data["type"])(
+                n_inputs=layer_data["n_inputs"], 
+                n_neurons=layer_data["n_neurons"], 
+                activation=util.get_activation(layer_data["activation"])()
+            )
+            self.layers.append(layer)
         # Iterate over each layer.
         for layer in self.layers:
             # Get the shapes of the weights and biases for the layer.
@@ -150,14 +192,12 @@ class Sequential:
             # Calculate the size of the weights and biases for the layer.
             weight_size = np.prod(weights_shape)
             bias_size = np.prod(biases_shape)
-            
             # Reshape the weights and biases from the flattened arrays and assign them to the layer.
             layer.weights = all_weights[weight_offset:weight_offset + weight_size].reshape(weights_shape)
             layer.biases = all_biases[bias_offset:bias_offset + bias_size].reshape(biases_shape)
             
             # Update the offsets for the weights and biases.
             weight_offset += weight_size
-            bias_offset += bias_size
             bias_offset += bias_size
         
         
