@@ -1,11 +1,17 @@
 import numpy as np
-import sklearn.datasets # for dataset
+import sklearn.datasets as sklearn_data# for dataset
+import keras.datasets  as keras_data# for dataset
 import brick_ml.utility as util
 import brick_ml.models.Sequential as Sequential
+
 import brick_ml.layers.Dense as Dense
+import brick_ml.layers.Convolutional as Convolutional
+import brick_ml.layers.Reshape as Reshape
+import brick_ml.layers.Pooling as Pooling
+
 import brick_ml.losses.mse as mse
+import brick_ml.losses.binary_cross_entropy as binary_cross_entropy
 import brick_ml.activations.Sigmoid as Sigmoid
-import brick_ml.activations.ReLU as ReLU
 import brick_ml.activations.Tanh as Tanh
 import matplotlib.pyplot as plt
 
@@ -43,7 +49,6 @@ def parity():
         off += abs(pred - validation)
     print(f"Total off: {off}")    
 
-
     choice = input("Save Model(y/n)?")
 
     if choice == "y":
@@ -53,16 +58,15 @@ def parity():
     plt.plot(xs,model.loss_history)
     plt.show()
 def iris():
-    data_set = sklearn.datasets.load_iris()
+    data_set = sklearn_data.load_iris()
     X = data_set["data"]
     y = [util.vectorize(size=3,idx=i) for i in data_set["target"]]
-    names = data_set["target_names"]
     X_train,X_test,y_train,y_test = util.test_train_split(X,y,split_size=0.7)
     model = Sequential.Sequential(0.07,mse.mse())
     model.add_layer(Dense.Dense(n_inputs=4,n_neurons=5,activation=Sigmoid.Sigmoid()))
-    model.add_layer(Dense.Dense(n_inputs=model.last_layer_size,n_neurons=3,activation=Tanh.Tanh()))
-    model.add_layer(Dense.Dense(n_inputs=model.last_layer_size,n_neurons=3,activation=Sigmoid.Sigmoid()))
-    model.train(n_epochs=5000,timestep=100,inputs=X_train,expected_output=y_train,batch_size=6,shuffle=True)
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=3,activation=Tanh.Tanh()))
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=3,activation=Sigmoid.Sigmoid()))
+    model.train(n_epochs=5000,timestep=100,inputs=X_train,expected_output=y_train,batch_size=12,shuffle=True)
     accuracy = model.evaluate(X_test,y_test)
     print(f"Accuracy: {accuracy*100:.2f} %")
     savemodel = input("Save Model(y/n)?")
@@ -73,10 +77,43 @@ def iris():
     xs = [x for x in range(len(model.loss_history))]
     plt.plot(xs,model.loss_history)
     plt.show()
+
+def mnist():
+    (X_train, y_train), (X_test, y_test) = keras_data.mnist.load_data()
     
+    X_train = X_train.astype("float32") / 255
+    X_test = X_test.astype("float32") / 255 
+
+    X_train = X_train.reshape(len(X_train), 1, 28, 28)
+    X_test = X_test.reshape(len(X_test),1, 1, 28, 28) # reshape for a btach size of 1 for evaluation
+
+
+    y_train = np.array([util.vectorize(size=10,idx=i) for i in y_train])
+    y_test = np.array([util.vectorize(size=10,idx=i) for i in y_test])
+    
+    y_train = y_train.reshape(len(y_train),10)
+    y_test = y_test.reshape(len(y_test),1,10)
+
+
+    model = Sequential.Sequential(0.2,binary_cross_entropy.binary_cross_entropy())
+    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=10,activation=Sigmoid.Sigmoid()))
+    vector_size = model.last_layer.n_kernels * model.last_layer.output_shape[1] * model.last_layer.output_shape[2] # 5 * 26 * 26 = 3380
+    model.add_layer(Reshape.Reshape(input_shape=model.last_layer.output_shape,output_shape=(vector_size,)))
+    model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=Sigmoid.Sigmoid()))
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=Sigmoid.Sigmoid()))
+
+    model.train(n_epochs=50,timestep=1,inputs=X_train,expected_output=y_train,batch_size=12,shuffle=True)
+
+    accuracy = model.evaluate(X_test,y_test)
+    print(f"Accuracy: {accuracy*100:.2f} %")
+    xs = [x for x in range(len(model.loss_history))]
+    plt.plot(xs,model.loss_history)
+    plt.show()
+
 def main():
     #parity()
-    iris()
+    #iris()
+    mnist()
 
 if __name__ == "__main__":
     main()
