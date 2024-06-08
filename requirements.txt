@@ -1,2 +1,4 @@
 numpy
 skikit-learn
+scipy
+keras
