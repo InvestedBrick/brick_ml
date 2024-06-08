@@ -53,7 +53,6 @@ class Dense:
         
         # Calculate the gradient of the loss with respect to the weights
         d_weights = np.dot(self.inputs.T, output_gradient)
-        
         # Update the weights and biases using gradient descent
         self.weights -= learning_rate * d_weights
         self.biases -= learning_rate * np.sum(output_gradient, axis=0, keepdims=True)
