@@ -15,7 +15,7 @@ class Sequential:
         - layer: An instance of a layer class.
         """
         self.layers.append(layer)  # Append the layer to the list of layers
-        self.last_layer_size = self.layers[-1].n_neurons  # Update the last layer size
+        self.last_layer = self.layers[-1]  # Update the last layer
 
     def train(self, n_epochs: int, timestep: int, inputs: np.ndarray, expected_output: np.ndarray, batch_size: int | None, shuffle: bool = True):
         """
@@ -32,34 +32,38 @@ class Sequential:
         # Set default batch size if None or negative
         if batch_size is None or batch_size < 0:
             batch_size = len(inputs)
-        
+
         # Train the model for the specified number of epochs
         for epoch in range(n_epochs):
             # Shuffle the data if specified
             if shuffle:
+                # Shuffle the data indices
                 indices = np.arange(len(inputs))
                 np.random.shuffle(indices)
+                # Shuffle the input and expected output arrays
                 inputs = np.array([inputs[i] for i in indices])
                 expected_output = np.array([expected_output[i] for i in indices])
-            
+
             epoch_loss = 0.0  # Accumulate the loss for the epoch
+
             # Iterate over each mini-batch
             for i in range(0, len(inputs), batch_size):
                 # Get the mini-batch
                 X_batch = inputs[i:i+batch_size]
                 y_batch = expected_output[i:i+batch_size]
-                # Predict the output for the mini-batch
-                output = self.predict(X_batch,training=True)
 
+                # Predict the output for the mini-batch
+                output = self.predict(X_batch, training=True)
                 # Calculate the loss
-                loss = self.loss.loss(y_batch,output)
+                loss = self.loss.loss(y_batch, output)
                 epoch_loss += loss
+                
                 # Calculate the gradient of the loss with respect to the weights
-                gradient = self.loss.loss_derivative(y_batch,output)
+                gradient = self.loss.loss_derivative(y_batch, output)
                 # Backpropagate the gradient through the layers
                 for layer in reversed(self.layers):
                     gradient = layer.backward(gradient, self.learning_rate)
-            
+
             # Calculate the average loss for the epoch
             epoch_loss /= len(inputs) // batch_size
 
@@ -131,25 +135,32 @@ class Sequential:
         
         # Iterate over each layer and append the flattened weights and biases.
         for layer in self.layers:
+            # Flatten the weights and biases of the layer.
             all_weights.append(layer.weights.flatten())
             all_biases.append(layer.biases.flatten())
         
         # Save the concatenated weights and biases to the respective text files.
         np.savetxt(weights_file, np.concatenate(all_weights))
         np.savetxt(biases_file, np.concatenate(all_biases))
-        #store layer data, batch size, and learning rate 
+        
+        # Store layer data, batch size, and learning rate in a dictionary.
         data = {}
         data["learning_rate"] = self.learning_rate
         data["loss"] = self.loss.__class__.__name__
         layers = {}
-        for i,layer in enumerate(self.layers):
+        
+        # Iterate over each layer and store its data in the dictionary.
+        for i, layer in enumerate(self.layers):
             layer_data = {}
             layer_data["n_inputs"] = layer.n_inputs
             layer_data["n_neurons"] = layer.n_neurons
             layer_data["activation"] = layer.activation.__class__.__name__
             layer_data["type"] = layer.__class__.__name__
             layers[f"layer_{i}"] = layer_data
+        
         data["layers"] = layers    
+        
+        # Save the metadata (layer data, batch size, learning rate) to a JSON file.
         with open(f"{model_name}_metadata.json", "w",encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -199,5 +210,3 @@ class Sequential:
             # Update the offsets for the weights and biases.
             weight_offset += weight_size
             bias_offset += bias_size
-        
-        
