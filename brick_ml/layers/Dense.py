@@ -49,7 +49,8 @@ class Dense:
         """
         # Apply the derivative of the activation function if it exists
         if self.activation is not None:
-            output_gradient *= self.activation.function_derivative(self.weighted_sum)
+            activation_derivative = self.activation.function_derivative(self.weighted_sum)
+            output_gradient *= activation_derivative
         
         # Calculate the gradient of the loss with respect to the weights
         d_weights = np.dot(self.inputs.T, output_gradient)
