@@ -1,7 +1,11 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 import sklearn.datasets as sklearn_data# for dataset
 import keras.datasets  as keras_data# for dataset
+
 import brick_ml.utility as util
+
 import brick_ml.models.Sequential as Sequential
 
 import brick_ml.layers.Dense as Dense
@@ -11,9 +15,10 @@ import brick_ml.layers.Pooling as Pooling
 
 import brick_ml.losses.mse as mse
 import brick_ml.losses.binary_cross_entropy as binary_cross_entropy
+
 import brick_ml.activations.Sigmoid as Sigmoid
 import brick_ml.activations.Tanh as Tanh
-import matplotlib.pyplot as plt
+
 
 def parity_check(data):
     """
@@ -96,13 +101,13 @@ def mnist():
 
 
     model = Sequential.Sequential(0.2,binary_cross_entropy.binary_cross_entropy())
-    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=10,activation=Sigmoid.Sigmoid()))
-    vector_size = model.last_layer.n_kernels * model.last_layer.output_shape[1] * model.last_layer.output_shape[2] # 5 * 26 * 26 = 3380
-    model.add_layer(Reshape.Reshape(input_shape=model.last_layer.output_shape,output_shape=(vector_size,)))
+    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=8,activation=Sigmoid.Sigmoid()))
+    vector_size = 8 * 26 * 26 
+    model.add_layer(Reshape.Reshape(input_shape=(16,8,26,26),output_shape=(vector_size,),add_batch_size=False)) # input_shape = batch_size, n_kernels, pool_output_width, pool_output_height
     model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=Sigmoid.Sigmoid()))
     model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=Sigmoid.Sigmoid()))
 
-    model.train(n_epochs=50,timestep=1,inputs=X_train,expected_output=y_train,batch_size=12,shuffle=True)
+    model.train(n_epochs=50,timestep=1,inputs=X_train,expected_output=y_train,batch_size=16,shuffle=True)
 
     accuracy = model.evaluate(X_test,y_test)
     print(f"Accuracy: {accuracy*100:.2f} %")
