@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import brick_ml.utility as util
+import time
 class Sequential:
     def __init__(self,learning_rate : float, loss) -> None:
         self.layers = []
@@ -35,6 +36,7 @@ class Sequential:
 
         # Train the model for the specified number of epochs
         for epoch in range(n_epochs):
+            epoch_start_time = time.time()
             # Shuffle the data if specified
             if shuffle:
                 # Shuffle the data indices
@@ -69,7 +71,8 @@ class Sequential:
 
             # Print the loss if the epoch is a multiple of timestep
             if epoch % timestep == 0:
-                print(f"Finished Epoch {epoch}, Loss {epoch_loss}")
+                epoch_time = time.time() - epoch_start_time
+                print(f"Finished Epoch {epoch}, Loss {epoch_loss}, epoch took {epoch_time} seconds to complete (~{((n_epochs - (epoch + 1)) * epoch_time) / 60:.2f} minutes remaining)")
                 self.loss_history.append(epoch_loss)
 
     def predict(self, inputs: np.ndarray, training: bool = False):
