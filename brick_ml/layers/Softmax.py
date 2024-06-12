@@ -1,41 +1,33 @@
 import numpy as np
 class Softmax:
-    def __init__():
+    def __init__(self):
         pass
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
         """
         Forward pass through the layer.
-
-        Args:
-        - inputs (np.ndarray): Input data.
-        - training (bool): Flag indicating whether the model is in training mode.
-
-        Returns:
-        - np.ndarray: Output of the layer.
         """
-        # Calculate the exponential of the inputs
-        tmp = np.exp(inputs)
-        # Calculate the softmax function by dividing the exponential by the sum of the exponential
-        self.output = tmp / np.sum(tmp, axis=1, keepdims=True) 
-        # Return the output of the layer
+        # Subtract the max for numerical stability
+        exp_values = np.exp(inputs - np.max(inputs, axis=1, keepdims=True))
+        probabilities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
+        self.output = probabilities
         return self.output
 
     def backward(self, output_gradient: np.ndarray, learning_rate: float) -> np.ndarray:
         """
-        Backpropagates the output gradient to update the weights and biases.
-
-        Args:
-        - output_gradient (np.ndarray): Gradient of the loss with respect to the output of the layer.
-        - learning_rate (float): Learning rate for updating the weights and biases.
-
-        Returns:
-        - np.ndarray: Gradient of the loss with respect to the input of the layer.
+        Backward pass through the layer.
         """
-        # Calculate the number of elements in the output
-        n = np.size(self.output)
-        # Tile the output array to create a matrix of shape (n,n)
-        tmp = np.tile(self.output,n)
-        # Calculate the gradient of the loss with respect to the input
-        return np.dot(tmp * (np.identity(n) - np.transpose(tmp)),output_gradient)
+        # Create uninitialized array
+        self.dinputs = np.empty_like(output_gradient)
+        
+        # Enumerate outputs and gradients
+        for index, (single_output, single_gradient) in enumerate(zip(self.output, output_gradient)):
+            # Flatten output array
+            single_output = single_output.reshape(-1, 1)
+            # Calculate Jacobian matrix of the output
+            jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
+            # Calculate sample-wise gradient
+            self.dinputs[index] = np.dot(jacobian_matrix, single_gradient)
+        
+        return self.dinputs
 
