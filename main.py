@@ -12,13 +12,14 @@ import brick_ml.layers.Dense as Dense
 import brick_ml.layers.Convolutional as Convolutional
 import brick_ml.layers.Reshape as Reshape
 import brick_ml.layers.Pooling as Pooling
+import brick_ml.layers.Softmax as Softmax
 
 import brick_ml.losses.mse as mse
 import brick_ml.losses.binary_cross_entropy as binary_cross_entropy
 
 import brick_ml.activations.Sigmoid as Sigmoid
 import brick_ml.activations.Tanh as Tanh
-
+import brick_ml.activations.ReLU as ReLU
 
 def parity_check(data):
     """
@@ -100,12 +101,14 @@ def mnist():
     y_test = y_test.reshape(len(y_test),1,10)
 
 
-    model = Sequential.Sequential(0.2,binary_cross_entropy.binary_cross_entropy())
-    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=8,activation=Sigmoid.Sigmoid()))
-    vector_size = 8 * 26 * 26 
-    model.add_layer(Reshape.Reshape(input_shape=(16,8,26,26),output_shape=(vector_size,),add_batch_size=False)) # input_shape = batch_size, n_kernels, pool_output_width, pool_output_height
-    model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=Sigmoid.Sigmoid()))
-    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=Sigmoid.Sigmoid()))
+    model = Sequential.Sequential(0.1,binary_cross_entropy.binary_cross_entropy())
+    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=8,activation=Tanh.Tanh()))
+    model.add_layer(Pooling.Pooling(pool_size=(2,2),stride=2,pad=0,pool_function="max"))
+    vector_size = 8 * 13 * 13 
+    model.add_layer(Reshape.Reshape(input_shape=(16,8,13,13),output_shape=(vector_size,),add_batch_size=False)) # input_shape = batch_size, n_kernels, pool_output_width, pool_output_height
+    model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=Tanh.Tanh()))
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=None))
+    model.add_layer(Softmax.Softmax())
 
     model.train(n_epochs=50,timestep=1,inputs=X_train,expected_output=y_train,batch_size=16,shuffle=True)
 
