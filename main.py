@@ -13,6 +13,7 @@ import brick_ml.layers.Convolutional as Convolutional
 import brick_ml.layers.Reshape as Reshape
 import brick_ml.layers.Pooling as Pooling
 import brick_ml.layers.Softmax as Softmax
+import brick_ml.layers.Dropout as Dropout
 
 import brick_ml.losses.mse as mse
 import brick_ml.losses.binary_cross_entropy as binary_cross_entropy
@@ -85,6 +86,7 @@ def iris():
     plt.show()
 
 def mnist():
+    #kinda broken rn
     (X_train, y_train), (X_test, y_test) = keras_data.mnist.load_data()
     
     X_train = X_train.astype("float32") / 255
@@ -101,27 +103,63 @@ def mnist():
     y_test = y_test.reshape(len(y_test),1,10)
 
 
-    model = Sequential.Sequential(0.1,binary_cross_entropy.binary_cross_entropy())
-    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=8,activation=Tanh.Tanh()))
-    model.add_layer(Pooling.Pooling(pool_size=(2,2),stride=2,pad=0,pool_function="max"))
-    vector_size = 8 * 13 * 13 
-    model.add_layer(Reshape.Reshape(input_shape=(16,8,13,13),output_shape=(vector_size,),add_batch_size=False)) # input_shape = batch_size, n_kernels, pool_output_width, pool_output_height
-    model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=Tanh.Tanh()))
-    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=None))
-    model.add_layer(Softmax.Softmax())
+    model = Sequential.Sequential(learning_rate=0.15,loss=binary_cross_entropy.binary_cross_entropy(),learning_rate_decay=0.98)
+    model.add_layer(Convolutional.Convolutional(input_shape=(1,28,28),kernel_size=3,n_kernels=12,activation=ReLU.ReLU()))
+    vector_size = 12 * 26 * 26
+    model.add_layer(Reshape.Reshape(input_shape=(12,26,26),output_shape=(vector_size,))) # input_shape = batch_size, n_kernels, pool_output_width, pool_output_height
+    model.add_layer(Dense.Dense(n_inputs=vector_size,n_neurons=32,activation=ReLU.ReLU()))
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=Sigmoid.Sigmoid()))
 
-    model.train(n_epochs=50,timestep=1,inputs=X_train,expected_output=y_train,batch_size=16,shuffle=True)
-
+    model.train(n_epochs=20,timestep=1,inputs=X_train,expected_output=y_train,batch_size=64,shuffle=True)
+    
     accuracy = model.evaluate(X_test,y_test)
     print(f"Accuracy: {accuracy*100:.2f} %")
+
+    save = input("Save Model(y/n)?")
+
+    if save == "y":
+        model.save("mnist")
     xs = [x for x in range(len(model.loss_history))]
     plt.plot(xs,model.loss_history)
     plt.show()
+def mnist_Dense():
+    (X_train, y_train), (X_test, y_test) = keras_data.mnist.load_data()
+    
+    X_train = X_train.astype("float32") / 255
+    X_test = X_test.astype("float32") / 255 
 
+    X_train = X_train.reshape(len(X_train), 28 * 28,)
+    X_test = X_test.reshape(len(X_test),1, 28 * 28,) # reshape for a batch size of 1 for evaluation
+
+
+    y_train = np.array([util.vectorize(size=10,idx=i) for i in y_train])
+    y_test = np.array([util.vectorize(size=10,idx=i) for i in y_test])
+    
+    y_train = y_train.reshape(len(y_train),10)
+    y_test = y_test.reshape(len(y_test),1,10)
+    
+
+    model = Sequential.Sequential(learning_rate=0.1,loss=binary_cross_entropy.binary_cross_entropy(),learning_rate_decay=1.0)
+    model.add_layer(Dense.Dense(n_inputs=28*28,n_neurons=32,activation=Sigmoid.Sigmoid()))
+    model.add_layer(Dense.Dense(n_inputs=model.last_layer.n_neurons,n_neurons=10,activation=Sigmoid.Sigmoid()))
+
+    model.train(n_epochs=100,timestep=1,inputs=X_train,expected_output=y_train,batch_size=64,shuffle=True)
+
+
+    accuracy = model.evaluate(X_test,y_test)
+    print(f"Accuracy: {accuracy*100:.2f} %")
+
+    save = input("Save Model(y/n)?")
+
+    if save == "y":
+        model.save("mnist_dense")
+    xs = [x for x in range(len(model.loss_history))]
+    plt.plot(xs,model.loss_history)
+    plt.show()
 def main():
     #parity()
     #iris()
-    mnist()
-
+    #mnist()
+    mnist_Dense()
 if __name__ == "__main__":
     main()
