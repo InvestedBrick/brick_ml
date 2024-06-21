@@ -3,11 +3,12 @@ import json
 import brick_ml.utility as util
 import time
 class Sequential:
-    def __init__(self,learning_rate : float, loss) -> None:
+    def __init__(self,learning_rate : float, loss,learning_rate_decay = 1) -> None:
         self.layers = []
         self.loss_history = []
         self.learning_rate = learning_rate
         self.loss = loss
+        self.learning_rate_decay = learning_rate_decay
     def add_layer(self, layer):
         """
         Adds a layer to the model.
@@ -68,7 +69,7 @@ class Sequential:
 
             # Calculate the average loss for the epoch
             epoch_loss /= len(inputs) // batch_size
-
+            self.learning_rate *= self.learning_rate_decay
             # Print the loss if the epoch is a multiple of timestep
             if epoch % timestep == 0:
                 epoch_time = time.time() - epoch_start_time
@@ -121,6 +122,7 @@ class Sequential:
         return counter / len(X_test) 
 
     
+    #update to work for Dense, Convolutional,Dropout,Pooling,Rehsape and Softmax
     def save(self, model_name):
         """
         Saves the model weights and biases to separate text files.
@@ -138,9 +140,13 @@ class Sequential:
         
         # Iterate over each layer and append the flattened weights and biases.
         for layer in self.layers:
-            # Flatten the weights and biases of the layer.
-            all_weights.append(layer.weights.flatten())
-            all_biases.append(layer.biases.flatten())
+            if layer.__class__.__name__ == "Dense":
+                all_weights.append(layer.weights.flatten())
+                all_biases.append(layer.biases.flatten())
+            elif layer.__class__.__name__ == "Convolutional":
+                all_weights.append(layer.kernels.flatten())
+                all_biases.append(layer.biases.flatten())
+                  
         
         # Save the concatenated weights and biases to the respective text files.
         np.savetxt(weights_file, np.concatenate(all_weights))
@@ -150,14 +156,32 @@ class Sequential:
         data = {}
         data["learning_rate"] = self.learning_rate
         data["loss"] = self.loss.__class__.__name__
+        data["lr_decay"] = self.learning_rate_decay
         layers = {}
         
         # Iterate over each layer and store its data in the dictionary.
         for i, layer in enumerate(self.layers):
             layer_data = {}
-            layer_data["n_inputs"] = layer.n_inputs
-            layer_data["n_neurons"] = layer.n_neurons
-            layer_data["activation"] = layer.activation.__class__.__name__
+            if layer.__class__.__name__ == "Dense":
+                layer_data["n_inputs"] = layer.n_inputs
+                layer_data["n_neurons"] = layer.n_neurons
+                layer_data["activation"] = layer.activation.__class__.__name__
+            elif layer.__class__.__name__ == "Convolutional":
+                    layer_data["input_shape"] = layer.input_shape
+                    layer_data["kernel_size"] = layer.kernel_size
+                    layer_data["n_kernels"] = layer.n_kernels
+                    layer_data["activation"] = layer.activation.__class__.__name__
+            elif layer.__class__.__name__ == "Dropout":
+                layer_data["dropout_rate"] = layer.dropout_rate
+            elif layer.__class__.__name__ == "Pooling":
+                layer_data["pool_size"] = layer.pool_size
+                layer_data["stride"] = layer.stride
+                layer_data["pad"] = layer.pad
+                layer_data["pool_function"] = layer.pool_function
+            elif layer.__class__.__name__ == "Reshape":
+                layer_data["input_shape"] = layer.input_shape
+                layer_data["output_shape"] = layer.output_shape     
+                    
             layer_data["type"] = layer.__class__.__name__
             layers[f"layer_{i}"] = layer_data
         
@@ -186,29 +210,66 @@ class Sequential:
             data = json.load(f)
         self.learning_rate = data["learning_rate"]
         self.loss = util.get_loss(data["loss"])
+        self.learning_rate_decay = data["lr_decay"]
         # Initialize offsets for the weights and biases.
         weight_offset = 0
         bias_offset = 0
         layers = data["layers"] 
         for  layer_data in layers.values():
-            layer = util.get_layer(layer_data["type"])(
+            if layer_data["type"] == "Dense":
+                layer = util.get_layer(layer_data["type"])(
                 n_inputs=layer_data["n_inputs"], 
                 n_neurons=layer_data["n_neurons"], 
                 activation=util.get_activation(layer_data["activation"])()
-            )
+                )
+            elif layer_data["type"] == "Convolutional":
+                layer = util.get_layer(layer_data["type"])(
+                input_shape=tuple(layer_data["input_shape"]), 
+                kernel_size=layer_data["kernel_size"], 
+                n_kernels=layer_data["n_kernels"], 
+                activation=util.get_activation(layer_data["activation"])()
+                )
+            elif layer_data["type"] == "Dropout":
+                layer = util.get_layer(layer_data["type"])(
+                dropout_rate=layer_data["dropout_rate"]
+                )    
+            elif layer_data["type"] == "Pooling":
+                layer = util.get_layer(layer_data["type"])(
+                pool_size=tuple(layer_data["pool_size"]), 
+                stride=layer_data["stride"], 
+                pad=layer_data["pad"],
+                pool_function=layer_data["pool_function"]
+                )    
+            elif layer_data["type"] == "Reshape":
+                layer = util.get_layer(layer_data["type"])(
+                input_shape=tuple(layer_data["input_shape"]), 
+                output_shape=tuple(layer_data["output_shape"])
+                )
+            elif layer_data["type"] == "Softmax":
+                layer = util.get_layer(layer_data["type"])()
             self.layers.append(layer)
         # Iterate over each layer.
         for layer in self.layers:
             # Get the shapes of the weights and biases for the layer.
-            weights_shape = layer.weights.shape
-            biases_shape = layer.biases.shape
+            if layer.__class__.__name__ == "Dense":
+                weights_shape = layer.weights.shape
+                biases_shape = layer.biases.shape
+            elif layer.__class__.__name__ == "Convolutional":
+                weights_shape = layer.kernels.shape
+                biases_shape = layer.biases.shape
+            else:
+                continue
             
             # Calculate the size of the weights and biases for the layer.
             weight_size = np.prod(weights_shape)
             bias_size = np.prod(biases_shape)
             # Reshape the weights and biases from the flattened arrays and assign them to the layer.
-            layer.weights = all_weights[weight_offset:weight_offset + weight_size].reshape(weights_shape)
-            layer.biases = all_biases[bias_offset:bias_offset + bias_size].reshape(biases_shape)
+            if layer.__class__.__name__ == "Dense":
+                layer.weights = all_weights[weight_offset:weight_offset + weight_size].reshape(weights_shape)
+                layer.biases = all_biases[bias_offset:bias_offset + bias_size].reshape(biases_shape)
+            elif layer.__class__.__name__ == "Convolutional":
+                layer.kernels = all_weights[weight_offset:weight_offset + weight_size].reshape(weights_shape)
+                layer.biases = all_biases[bias_offset:bias_offset + bias_size].reshape(biases_shape)
             
             # Update the offsets for the weights and biases.
             weight_offset += weight_size
