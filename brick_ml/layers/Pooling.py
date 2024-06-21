@@ -5,7 +5,7 @@ class Pooling:
         self.pool_size = pool_size
         self.stride = stride
         self.pad = pad
-        self.pool_function = pool_size
+        self.pool_function = pool_function
 
             
     def forward(self, inputs: np.ndarray, training: bool = True) -> np.ndarray:
